@@ -23,4 +23,5 @@ urlpatterns = [
     path('api/deals/', include('deals.urls')),
     path('api/admin/', include('deals.admin_api.urls')),
     path('api/webhooks/', include('payments.urls')),
+    path('api/merchant/', include('deals.merchant.urls')),
 ]

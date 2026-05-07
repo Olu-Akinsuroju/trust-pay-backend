@@ -26,7 +26,7 @@ class Deal(models.Model):
 
     va_account_number = models.CharField(max_length=20, blank=True)
     va_bank_name = models.CharField(max_length=100, blank=True)
-    va_reference = models.CharField(max_length=100, blank=True, unique=True)
+    va_reference = models.CharField(max_length=100, null=True, blank=True, unique=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
