@@ -22,18 +22,48 @@ def payaza_webhook(request):
     if not reference:
         return Response({'error': 'No reference'}, status=400)
 
+    event_type = (data.get('event_type') or data.get('status', '')).lower()
+
+    deal = None
     try:
         deal = Deal.objects.get(va_reference=reference)
     except Deal.DoesNotExist:
-        return Response({'status': 'unknown reference'})
+        txn = Transaction.objects.filter(payaza_ref=reference).first()
+        if txn:
+            deal = txn.deal
 
-    event_type = data.get('event_type') or data.get('status', '')
     if event_type in ('payment.success', 'success', 'completed'):
+        if not deal:
+            return Response({'status': 'received'})
         deal.status = 'PAID'
         deal.paid_at = timezone.now()
         deal.save()
         Transaction.objects.create(
             deal=deal, tx_type='COLLECTION', status='SUCCESS',
+            amount=deal.amount, payaza_ref=data.get('transaction_id', '')
+        )
+
+    elif event_type == 'payment.failed':
+        if not deal:
+            return Response({'status': 'received'})
+        Transaction.objects.create(
+            deal=deal, tx_type='COLLECTION', status='FAILED',
+            amount=deal.amount, payaza_ref=data.get('transaction_id', '')
+        )
+
+    elif event_type == 'payout.success':
+        if not deal:
+            return Response({'status': 'received'})
+        Transaction.objects.create(
+            deal=deal, tx_type='PAYOUT', status='SUCCESS',
+            amount=deal.amount, payaza_ref=data.get('transaction_id', '')
+        )
+
+    elif event_type == 'payout.failed':
+        if not deal:
+            return Response({'status': 'received'})
+        Transaction.objects.create(
+            deal=deal, tx_type='PAYOUT', status='FAILED',
             amount=deal.amount, payaza_ref=data.get('transaction_id', '')
         )
 

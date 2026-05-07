@@ -40,3 +40,11 @@ class DisputeSerializer(serializers.ModelSerializer):
 
 class DisputeCreateSerializer(serializers.Serializer):
     reason = serializers.CharField(required=True)
+
+
+class AdminDisputeSerializer(serializers.ModelSerializer):
+    deal = DealSerializer(read_only=True)
+
+    class Meta:
+        model = Dispute
+        fields = '__all__'

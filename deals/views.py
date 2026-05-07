@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
 from django.utils.text import slugify
+from django.db import transaction
 from django.db.models import Q
 from datetime import timedelta
 import random
@@ -15,7 +16,7 @@ from .serializers import (
     DealPayResponseSerializer, TransactionSerializer,
     DisputeSerializer, DisputeCreateSerializer,
 )
-from payments.payaza import create_virtual_account, payout_seller, refund_buyer
+from payments.payaza import create_virtual_account, payout_seller, refund_buyer, PayazaError
 
 
 class DealListCreateView(generics.ListCreateAPIView):
@@ -108,7 +109,16 @@ def deal_confirm(request, slug):
             {'error': 'Deal is under dispute'},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    payout_seller(deal)
+    try:
+        payout_seller(deal)
+    except PayazaError:
+        Transaction.objects.create(
+            deal=deal, tx_type='PAYOUT', status='FAILED', amount=deal.amount
+        )
+        return Response(
+            {'error': 'Payout failed, please try again'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
     deal.status = 'COMPLETED'
     deal.completed_at = timezone.now()
     deal.save()
@@ -134,7 +144,8 @@ def deal_dispute(request, slug):
             {'error': 'Deal already has a dispute'},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    Dispute.objects.create(deal=deal, reason=serializer.validated_data['reason'])
-    deal.status = 'DISPUTED'
-    deal.save()
+    with transaction.atomic():
+        Dispute.objects.create(deal=deal, reason=serializer.validated_data['reason'])
+        deal.status = 'DISPUTED'
+        deal.save()
     return Response({'dispute_id': deal.dispute.id, 'status': 'OPEN'})
