@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import random
 import requests
 from django.conf import settings
 
@@ -10,6 +11,10 @@ class PayazaError(Exception):
         self.status_code = status_code
         self.response_data = response_data
         super().__init__(message)
+
+
+def _mock_mode():
+    return getattr(settings, 'PAYAZA_MOCK_MODE', False)
 
 
 def _payaza_headers():
@@ -27,6 +32,12 @@ def _url(path):
 
 
 def create_virtual_account(deal):
+    if _mock_mode():
+        return {
+            "account_number": f"{random.randint(1000000000, 9999999999)}",
+            "bank_name": "Payaza Test Bank",
+            "reference": str(deal.id),
+        }
     try:
         resp = requests.post(
             _url("/payaza-account/api/v1/mainaccounts/merchant/virtual-account"),
@@ -55,6 +66,12 @@ def create_virtual_account(deal):
 
 
 def payout_seller(deal):
+    if _mock_mode():
+        return {
+            "status": "success",
+            "transaction_id": f"mock-payout-{deal.id}",
+            "message": "Mock payout successful",
+        }
     net = deal.amount - (deal.amount * deal.trust_fee_percent / 100)
     payload = {
         "account_number": deal.seller.bank_account_number,
@@ -88,6 +105,12 @@ def payout_seller(deal):
 
 
 def refund_buyer(deal):
+    if _mock_mode():
+        return {
+            "status": "success",
+            "transaction_id": f"mock-refund-{deal.id}",
+            "message": "Mock refund successful",
+        }
     payload = {
         "account_number": deal.buyer_phone or "",
         "bank_code": "",
@@ -117,6 +140,8 @@ def refund_buyer(deal):
 
 
 def enquiry_account_name(account_number, bank_code):
+    if _mock_mode():
+        return {"account_name": "Test Account Holder", "account_number": account_number}
     resp = requests.get(
         _url(f"/payaza-account/api/v1/mainaccounts/merchant/provider/enquiry"),
         params={"account_number": account_number, "bank_code": bank_code},
@@ -128,6 +153,8 @@ def enquiry_account_name(account_number, bank_code):
 
 
 def check_transaction_status(reference):
+    if _mock_mode():
+        return {"status": "success", "transaction_status": "completed", "reference": reference}
     try:
         resp = requests.get(
             _url(f"/payaza-account/api/v1/mainaccounts/merchant/transaction/{reference}"),
