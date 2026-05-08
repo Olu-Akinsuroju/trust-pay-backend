@@ -10,7 +10,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'password', 'email', 'phone', 'bank_name',
-                  'bank_account_number', 'bank_code', 'is_merchant']
+                  'bank_account_number', 'bank_code', 'bank_account_name', 'is_merchant']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -24,4 +24,4 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'phone', 'bank_name',
-                  'bank_account_number', 'bank_code', 'is_merchant']
+                  'bank_account_number', 'bank_code', 'bank_account_name', 'is_merchant']

@@ -56,16 +56,24 @@ def create_virtual_account(deal):
 
 def payout_seller(deal):
     net = deal.amount - (deal.amount * deal.trust_fee_percent / 100)
+    payload = {
+        "account_number": deal.seller.bank_account_number,
+        "bank_code": deal.seller.bank_code,
+        "amount": str(net),
+        "currency": "NGN",
+        "narration": f"TrustPay {deal.item_description}",
+        "reference": f"payout-{deal.id}",
+    }
+    beneficiary_name = getattr(deal.seller, 'bank_account_name', '') or deal.seller.get_full_name() or deal.seller.username
+    if beneficiary_name:
+        payload["beneficiary_name"] = beneficiary_name
+    pin = getattr(settings, 'PAYAZA_TRANSACTION_PIN', None)
+    if pin:
+        payload["pin"] = str(pin)
     try:
         resp = requests.post(
             _url("/payout-receptor/payout"),
-            json={
-                "account_number": deal.seller.bank_account_number,
-                "bank_code": deal.seller.bank_code,
-                "amount": str(net),
-                "currency": "NGN",
-                "narration": f"TrustPay {deal.item_description}",
-            },
+            json=payload,
             headers=_payaza_headers(),
             timeout=30,
         )
@@ -80,16 +88,21 @@ def payout_seller(deal):
 
 
 def refund_buyer(deal):
+    payload = {
+        "account_number": deal.buyer_phone or "",
+        "bank_code": "",
+        "amount": str(deal.amount),
+        "currency": "NGN",
+        "narration": f"TrustPay refund {deal.item_description}",
+        "reference": f"refund-{deal.id}",
+    }
+    pin = getattr(settings, 'PAYAZA_TRANSACTION_PIN', None)
+    if pin:
+        payload["pin"] = str(pin)
     try:
         resp = requests.post(
             _url("/payout-receptor/payout"),
-            json={
-                "account_number": deal.buyer_phone or "",
-                "bank_code": "",
-                "amount": str(deal.amount),
-                "currency": "NGN",
-                "narration": f"TrustPay refund {deal.item_description}",
-            },
+            json=payload,
             headers=_payaza_headers(),
             timeout=30,
         )
@@ -100,6 +113,17 @@ def refund_buyer(deal):
             status_code=getattr(e.response, 'status_code', None),
             response_data=e.response.text if e.response else None,
         ) from e
+    return resp.json()
+
+
+def enquiry_account_name(account_number, bank_code):
+    resp = requests.get(
+        _url(f"/payaza-account/api/v1/mainaccounts/merchant/provider/enquiry"),
+        params={"account_number": account_number, "bank_code": bank_code},
+        headers=_payaza_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
     return resp.json()
 
 
