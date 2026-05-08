@@ -163,4 +163,3 @@ PAYAZA_PUBLIC_KEY = os.getenv('PAYAZA_PUBLIC_KEY', '')
 PAYAZA_TENANT_ID = os.getenv('PAYAZA_TENANT_ID', 'test')
 PAYAZA_SECRET = os.getenv('PAYAZA_SECRET', '')
 PAYAZA_TRANSACTION_PIN = os.getenv('PAYAZA_TRANSACTION_PIN', '')
-PAYAZA_MOCK_MODE = os.getenv('PAYAZA_MOCK_MODE', 'True').lower() == 'true'

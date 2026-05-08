@@ -143,7 +143,6 @@ class PayazaWebhookTests(APITestCase):
         )
 
 
-@override_settings(PAYAZA_MOCK_MODE=False)
 class PayazaServiceTests(TestCase):
     """Tests for Payaza service functions."""
 
